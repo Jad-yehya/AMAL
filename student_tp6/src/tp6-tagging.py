@@ -16,6 +16,7 @@ logging.basicConfig(level=logging.INFO)
 
 ds = prepare_dataset('org.universaldependencies.french.gsd')
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Format de sortie décrit dans
 # https://pypi.org/project/conllu/
@@ -145,8 +146,8 @@ def train(model, train_loader, dev_loader, loss_function, optimizer, writer, epo
         for batch in train_loader:
             # Putting batch first
             x, y = batch
-            x = x.permute(1, 0)
-            y = y.permute(1, 0)
+            x = x.permute(1, 0).to(device)
+            y = y.permute(1, 0).to(device)
             model.zero_grad()
             output = model(x)
             output = output.permute(0, 2, 1)
@@ -165,8 +166,8 @@ def evaluate(model, dev_loader, loss_function, writer, epoch):
     with torch.no_grad():
         for batch in dev_loader:
             x, y = batch
-            x = x.permute(1, 0)
-            y = y.permute(1, 0)
+            x = x.permute(1, 0).to(device)
+            y = y.permute(1, 0).to(device)
             output = model(x)
             output = output.permute(0, 2, 1)
             loss = loss_function(output, y)
@@ -183,8 +184,8 @@ def test(model, test_loader):
         correct = 0
         for batch in test_loader:
             x, y = batch
-            x = x.permute(1, 0)
-            y = y.permute(1, 0)
+            x = x.permute(1, 0).to(device)
+            y = y.permute(1, 0).to(device)
             output = model(x)
             output = output.permute(0, 2, 1)
 
@@ -205,11 +206,14 @@ def test(model, test_loader):
 
 
 def main():
+    logging.info("Starting...")
+    logging.info("Using device %s", device)
     writer = SummaryWriter()
     model = Tagger(len(words), len(tags), 128, 128)
+    model.to(device)
     loss_function = nn.CrossEntropyLoss(ignore_index=PAD)
     optimizer = optim.Adam(model.parameters(), lr=0.001)
-    train(model, train_loader, dev_loader, loss_function, optimizer, writer, epochs=10)
+    train(model, train_loader, dev_loader, loss_function, optimizer, writer, epochs=20)
     test(model, test_loader)
     writer.close()
 

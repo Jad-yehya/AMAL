@@ -10,9 +10,10 @@ import string
 from tqdm import tqdm
 from pathlib import Path
 from typing import List
+import random
 
 import time
-import re
+import re 
 from torch.utils.tensorboard import SummaryWriter
 
 
@@ -128,3 +129,226 @@ train_loader = DataLoader(datatrain, collate_fn=collate_fn, batch_size=BATCH_SIZ
 test_loader = DataLoader(datatest, collate_fn=collate_fn, batch_size=BATCH_SIZE, shuffle=True)
 
 #  TODO:  Implémenter l'encodeur, le décodeur et la boucle d'apprentissage
+# implémentez l'encodeur-décodeur. Utilisez dans les deux cas des GRUs et les architectures suivantes :
+# encodeur : un embedding du vocabulaire d'origine puis un GRU
+# décodeur : un embedding du vocabulaire de destination, puis un GRU suivi d'un réseau linéaire pour le 
+# décodage de l'état latent (et un softmax pour terminer) Dans le décodeur, vous aurez besoin d'une 
+# méthode generate(hidden,lenseq=None) qui à partir d'un état caché hidden (et du token SOS en entrée) 
+# produit une séquence jusqu'à ce que la longueur lenseq soit atteinte ou jusqu'à ce que le token EOS soit engendré.
+
+class Encoder(nn.Module):
+    def __init__(self, input_size, hidden_size, embedding_size=256):
+        super(Encoder, self).__init__()
+        self.hidden_size=hidden_size
+        self.embedding_size=embedding_size
+        self.embedding = nn.Embedding(input_size, embedding_size)
+        self.gru = nn.GRU(embedding_size, hidden_size, batch_first=True)
+
+    def forward(self, x, hidden):
+        x = self.embedding(x).view(1, -1, self.embedding_size)
+        x, hidden = self.gru(x, hidden)
+        return x, hidden
+
+    def initHidden(self): 
+        return torch.zeros(1, 1, self.hidden_size, device=device)
+
+class Decoder(nn.Module):
+    def __init__(self, output_size, hidden_size, embedding_size=256):
+        super(Decoder, self).__init__()
+        self.hidden_size=hidden_size
+        self.embedding = nn.Embedding(output_size, embedding_size)
+        self.gru = nn.GRU(embedding_size, hidden_size, batch_first=True)
+        self.linear = nn.Linear(hidden_size, output_size)
+        self.softmax = nn.LogSoftmax(dim=1)
+
+    def forward(self, x, hidden):
+        x = self.embedding(x).view(1, 1, -1)
+        x, hidden = self.gru(x, hidden)
+        x = self.linear(x[0])
+        x = self.softmax(x)
+        return x, hidden
+
+    def generate(self,hidden,lenseq=None):
+        x = torch.tensor([[Vocabulary.SOS]], device=device)
+        res = []
+        if lenseq is None:
+            lenseq = 100
+
+        for i in range(lenseq):
+            x, hidden = self.forward(x, hidden)
+            topv, topi = x.topk(1)
+            res.append(topi.item())
+            if topi.item() == Vocabulary.EOS or (lenseq is not None and len(res) >= lenseq):
+                break
+            x = topi.squeeze().detach()
+        return res,hidden
+
+    def initHidden(self): 
+        return torch.zeros(1, 1, self.hidden_size, device=device)
+
+class EncoderDecoder(nn.Module):
+    def __init__(self, input_size, output_size, hidden_size, embedding_size=256):
+        super(EncoderDecoder, self).__init__()
+        self.Encoder = Encoder(input_size, hidden_size, embedding_size)
+        self.Decoder = Decoder(output_size, hidden_size, embedding_size)
+        self.output_size = output_size
+
+    def forward(self, x, y, teacher_forcing_ratio=0.5):
+        x_len = x.shape[0]
+        y_len = y.shape[0]
+        batch_size = x.shape[1]
+        vocab_size = self.output_size
+
+        outputs = torch.zeros(y_len, batch_size, vocab_size).to(device)
+        hidden = self.Encoder.initHidden()
+        for i in range(x_len):
+            _, hidden = self.Encoder(x[i], hidden)
+
+        input = y[0]
+        for i in range(1, y_len):
+            output, hidden = self.Decoder(input, hidden)
+            outputs[i] = output
+            teacher_force = random.random() < teacher_forcing_ratio
+            top1 = output.max(1)[1]
+            input = (y[i] if teacher_force else top1)
+        return outputs
+
+    def generate(self, x, lenseq=None):
+        x_len = x.shape[0]
+        batch_size = x.shape[1]
+        hidden = self.Encoder.initHidden()
+        for i in range(x_len):
+            _, hidden = self.Encoder(x[i], hidden)
+
+        res = []
+        for i in range(batch_size):
+            res.append(self.Decoder.generate(hidden[:, i, :],lenseq)[0])
+        return res
+
+
+def train(model, train_loader, dev_loader, loss_function, optimizer, writer, epochs=10):
+    for epoch in range(epochs):
+        model.train()
+        for batch in train_loader:
+            x, x_len, y, y_len = batch
+            
+            print("x :", x.shape)
+            print("x_len :", x_len.shape)
+            print("y :", y.shape)
+            print("y_len :", y_len.shape)
+
+            x = x.permute(1, 0).to(device)
+            y = y.permute(1, 0).to(device)
+
+            model.zero_grad()
+            output = model(x, y)
+            loss = loss_function(output.view(-1, model.output_size), y[1:].view(-1))
+            loss.backward()
+            optimizer.step()
+        writer.add_scalar("Loss/train", loss.item(), epoch)
+        logging.info("Epoch %d: loss %f", epoch, loss.item())
+        evaluate(model, dev_loader, loss_function, writer, epoch)
+
+
+def evaluate(model, dev_loader, loss_function, writer, epoch):
+    model.eval()
+    total_loss = 0
+    with torch.no_grad():
+        for batch in dev_loader:
+            x, x_len, y, y_len = batch
+
+            x = x.to(device)
+            y = y.to(device)
+
+            output = model(x, y)
+            loss = loss_function(output.view(-1, model.output_size), y[1:].view(-1))
+            total_loss += loss.item()
+    writer.add_scalar("Loss/dev", total_loss, epoch)
+    logging.info("Evaluation: loss %f", total_loss)
+
+def test(model, test_loader):
+    model.eval()
+    total_loss = 0
+    with torch.no_grad():
+        total = 0
+        correct = 0
+        for batch in test_loader:
+            x, y = batch
+            x = x.to_device()
+            y = y.to_device()
+
+            output = model(x, y)
+            loss = loss_function(output.view(-1, model.output_size), y[1:].view(-1))
+            total_loss += loss.item()
+
+            _, predicted = torch.max(output.data, 1)
+            predicted = predicted.tolist()
+            y = y.tolist()
+            for i in range(len(predicted)):
+                if y[i] != Vocabulary.PAD:
+                    total += 1
+                    if predicted[i] == y[i]:
+                        correct += 1
+
+    writer.add_scalar("Loss/test", total_loss)
+
+    logging.info("Evaluation: loss %f", total_loss)
+    logging.info("Accuracy: %f", correct / total)
+
+def generate(model, test_loader):
+    model.eval()
+    with torch.no_grad():
+        for batch in test_loader:
+            x, y = batch
+            x = x.to_device()
+            y = y.to_device()
+
+            output = model.generate(x)
+            print(output)
+            print(vocFra.getwords(output))
+            print(vocFra.getwords(y.tolist()))
+            break
+
+if __name__ == "__main__":
+    input_size = len(vocEng)
+    output_size = len(vocFra)
+    hidden_size = 256
+    embedding_size = 256
+    model = EncoderDecoder(input_size, output_size, hidden_size, embedding_size).to(device)
+    loss_function = nn.NLLLoss(ignore_index=Vocabulary.PAD)
+    optimizer = optim.Adam(model.parameters(), lr=0.01)
+    # train(model, train_loader, test_loader, loss_function, optimizer, writer, epochs=10)
+    # test(model, test_loader)
+    # generate(model, test_loader)
+
+    encoder = Encoder(input_size, hidden_size, embedding_size).to(device)
+    decoder = Decoder(output_size, hidden_size, embedding_size).to(device)
+
+    batch = next(iter(train_loader))
+    x, x_len, y, y_len = batch
+
+    x = x.permute(1, 0).to(device)
+    y = y.permute(1, 0).to(device)
+
+    hidden = encoder.initHidden()
+    for i in range(x.shape[0]):
+        _, hidden = encoder(x[i], hidden)
+
+    decoder_input = torch.tensor([[Vocabulary.SOS]], device=device)
+
+    outs = []
+    for i in range(y.shape[0]):
+        output, hidden = decoder(decoder_input, hidden)
+        topv, topi = output.topk(1)
+        outs.append(topi.item())
+        decoder_input = topi.squeeze().detach()
+        if topi.item() == Vocabulary.EOS:
+            break
+
+    translation = [vocFra.getword(i) for i in outs]
+    print(translation)
+writer.close()
+
+
+
+
