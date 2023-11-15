@@ -14,9 +14,7 @@ import random
 
 import time
 import re 
-from torch.utils.tensorboard import SummaryWriter
-
-
+# from torch.utils.tensorboard import SummaryWriter
 
 
 logging.basicConfig(level=logging.INFO)
@@ -146,8 +144,8 @@ class Encoder(nn.Module):
 
     def forward(self, x, hidden):
         x = self.embedding(x).view(1, -1, self.embedding_size)
-        x, hidden = self.gru(x, hidden)
-        return x, hidden
+        output, hidden = self.gru(x)
+        return output, hidden
 
     def initHidden(self): 
         return torch.zeros(1, 1, self.hidden_size, device=device)
@@ -156,15 +154,38 @@ class Decoder(nn.Module):
     def __init__(self, output_size, hidden_size, embedding_size=256):
         super(Decoder, self).__init__()
         self.hidden_size=hidden_size
+        self.embedding_size=embedding_size
         self.embedding = nn.Embedding(output_size, embedding_size)
         self.gru = nn.GRU(embedding_size, hidden_size, batch_first=True)
         self.linear = nn.Linear(hidden_size, output_size)
         self.softmax = nn.LogSoftmax(dim=1)
 
     def forward(self, x, hidden):
-        x = self.embedding(x).view(1, 1, -1)
-        x, hidden = self.gru(x, hidden)
-        x = self.linear(x[0])
+        """
+        Prend l'output de l'encodeur et le hidden state et renvoie la prédiction et le nouveau hidden state
+        """
+        batch_size = x.size(0)
+        decoder_input = torch.empty(batch_size, 1, dtype=torch.long, device=device).fill_(Vocabulary.SOS)
+        decoder_output = []
+        for i in range(x.size(1)):
+            decoder_input = self.embedding(decoder_input)
+            output, hidden = self.gru(decoder_input, hidden)
+            output = self.linear(output)
+            output = self.softmax(output)
+            decoder_output.append(output)
+            decoder_input = output.argmax(dim=2)
+
+        decoder_output = torch.cat(decoder_output, dim=1)
+        return decoder_output, hidden
+
+
+    def forward_step(self, x, hidden):
+        """
+        Prend en entrée le dernier token généré et le hidden state et renvoie la prédiction et le nouveau hidden state
+        """
+        x = self.embedding(x).view(1, -1, self.embedding_size)
+        output, hidden = self.gru(x, hidden)
+        x = self.linear(output)
         x = self.softmax(x)
         return x, hidden
 
@@ -317,36 +338,36 @@ if __name__ == "__main__":
     model = EncoderDecoder(input_size, output_size, hidden_size, embedding_size).to(device)
     loss_function = nn.NLLLoss(ignore_index=Vocabulary.PAD)
     optimizer = optim.Adam(model.parameters(), lr=0.01)
-    # train(model, train_loader, test_loader, loss_function, optimizer, writer, epochs=10)
-    # test(model, test_loader)
-    # generate(model, test_loader)
+    train(model, train_loader, test_loader, loss_function, optimizer, writer, epochs=10)
+    test(model, test_loader)
+    generate(model, test_loader)
 
-    encoder = Encoder(input_size, hidden_size, embedding_size).to(device)
-    decoder = Decoder(output_size, hidden_size, embedding_size).to(device)
+    # encoder = Encoder(input_size, hidden_size, embedding_size).to(device)
+    # decoder = Decoder(output_size, hidden_size, embedding_size).to(device)
 
-    batch = next(iter(train_loader))
-    x, x_len, y, y_len = batch
+    # batch = next(iter(train_loader))
+    # x, x_len, y, y_len = batch
 
-    x = x.permute(1, 0).to(device)
-    y = y.permute(1, 0).to(device)
+    # x = x.permute(1, 0).to(device)
+    # y = y.permute(1, 0).to(device)
 
-    hidden = encoder.initHidden()
-    for i in range(x.shape[0]):
-        _, hidden = encoder(x[i], hidden)
+    # hidden = encoder.initHidden()
+    # for i in range(x.shape[0]):
+    #     _, hidden = encoder(x[i], hidden)
 
-    decoder_input = torch.tensor([[Vocabulary.SOS]], device=device)
+    # decoder_input = torch.tensor([[Vocabulary.SOS]], device=device)
 
-    outs = []
-    for i in range(y.shape[0]):
-        output, hidden = decoder(decoder_input, hidden)
-        topv, topi = output.topk(1)
-        outs.append(topi.item())
-        decoder_input = topi.squeeze().detach()
-        if topi.item() == Vocabulary.EOS:
-            break
+    # outs = []
+    # for i in range(y.shape[0]):
+    #     output, hidden = decoder(decoder_input, hidden)
+    #     topv, topi = output.topk(1)
+    #     outs.append(topi.item())
+    #     decoder_input = topi.squeeze().detach()
+    #     if topi.item() == Vocabulary.EOS:
+    #         break
 
-    translation = [vocFra.getword(i) for i in outs]
-    print(translation)
+    # translation = [vocFra.getword(i) for i in outs]
+    # print(translation)
 writer.close()
 
 
