@@ -18,10 +18,19 @@ import re
 # from torch.utils.tensorboard import SummaryWriter
 
 # %%
+# Make logging to a file and to the console
+logging.basicConfig(level=logging.INFO, 
+                    format='%(asctime)s %(levelname)-8s %(message)s',
+                    datefmt='%m-%d %H:%M',
+                    handlers=[
+                        logging.FileHandler("tmp2.log"),
+                        logging.StreamHandler()
+                    ]
+)
 
-logging.basicConfig(level=logging.INFO)
+# %%
 
-FILE = "../data/en-fra.txt"
+FILE = "./data/en-fra.txt"
 
 writer = SummaryWriter("/tmp/runs/tag-"+time.asctime())
 
@@ -146,6 +155,7 @@ test_loader = DataLoader(datatest, collate_fn=collate_fn,
 # qui à partir d'un état caché hidden (et du token SOS en entrée) produit une séquence jusqu'à ce que la longueur lenseq
 # soit atteinte ou jusqu'à ce que le token EOS soit engendré.
 
+hidden_size = 512
 
 class Encoder(nn.Module):
     def __init__(self, input_size, hidden_size) -> None:
@@ -198,7 +208,8 @@ class Decoder(nn.Module):
                 decoder_input = topi.squeeze().detach().view(1, -1)
 
         decoder_outputs = torch.cat(decoder_outputs, dim=0)
-        decoder_outputs = nn.functional.softmax(decoder_outputs, dim=2)
+        # decoder_outputs = nn.functional.softmax(decoder_outputs, dim=2)
+        # Pas de softmax car CrossEntropyLoss le fait
         return decoder_outputs, decoder_hidden
 
     def generate(self, hidden, lenseq=None):
@@ -234,8 +245,8 @@ x = x.to(device)
 y = y.to(device)
 print(x.shape, y.shape)
 # %%
-encoder = Encoder(len(vocEng), 256).to(device)
-decoder = Decoder(256, len(vocFra)).to(device)
+encoder = Encoder(len(vocEng), hidden_size).to(device)
+decoder = Decoder(hidden_size, len(vocFra)).to(device)
 # %%
 encoder_outputs, encoder_hidden = encoder(x)
 print(encoder_outputs.shape, encoder_hidden.shape)
@@ -243,13 +254,25 @@ print(encoder_outputs.shape, encoder_hidden.shape)
 decoder_outputs, decoder_hidden = decoder(encoder_outputs, encoder_hidden, y)
 print(decoder_outputs.shape, decoder_hidden.shape)
 
-# %%
-# Training 
-model = nn.Sequential(encoder, decoder)
-optimizer = optim.Adam(model.parameters(), lr=0.001)
-criterion = nn.NLLLoss(ignore_index=Vocabulary.PAD)
+#%%
+lr = 3e-3
+epochs = 15
+#%%
+logging.info("Starting training")
+logging.info(f"Learning rate : {lr}")
+logging.info(f"Batch size : {BATCH_SIZE}")
+logging.info(f"Max len : {MAX_LEN}")
+logging.info(f"Hidden size : {hidden_size}")
+logging.info(f"Epochs : {epochs}")
 
-for epoch in range(5):
+# %%
+# Training
+
+model = nn.Sequential(encoder, decoder)
+optimizer = optim.Adam(model.parameters(), lr=lr)
+criterion = nn.CrossEntropyLoss()
+
+for epoch in range(epochs):
     model.train()
     for x, x_len, y, y_len in tqdm(train_loader):
         x = x.to(device)
@@ -261,7 +284,7 @@ for epoch in range(5):
         loss.backward()
         optimizer.step()
         writer.add_scalar("Loss/train", loss.item(), epoch)
-    print(loss.item())
+    logging.info(f"Epoch {epoch} : Train loss : {loss.item()}")
     # Calculating accuracy
     model.eval()
     with torch.no_grad():
@@ -272,45 +295,28 @@ for epoch in range(5):
         decoder_outputs, decoder_hidden = decoder(encoder_outputs, encoder_hidden, y)
         loss = criterion(decoder_outputs.view(-1, len(vocFra)), y.view(-1))
         writer.add_scalar("Loss/test", loss.item(), epoch)
-        print(f"Epoch {epoch} : {loss.item()}")
+        logging.info(f"Epoch {epoch} : Test loss : {loss.item()}")
         # Calculating accuracy
         _, topi = decoder_outputs.topk(1)
         topi = topi.squeeze().detach().view(-1, y.shape[1])
-        print(topi.shape)
-        print(y.shape)
-        print("x : ", vocEng.getwords(x[:, 0]))
-        print("y :", vocFra.getwords(y[:, 0]))
-        print("y hat : ", vocFra.getwords(topi[:, 0]))
+        #print(topi.shape)
+        #print(y.shape)
         accuracy = (topi == y).sum().item() / (y.shape[0] * y.shape[1])
-        print(f"Accuracy : {accuracy}")
+        logging.info(f"Epoch {epoch} : Test accuracy : {accuracy}")
         writer.add_scalar("Accuracy/test", accuracy, epoch)
 
 
-#%%
-
-
-# for epoch in range(10):
-#     model.train()
-#     for x, x_len, y, y_len in tqdm(train_loader):
-#         x = x.to(device)
-#         y = y.to(device)
-#         optimizer.zero_grad()
-#         encoder_outputs, encoder_hidden = encoder(x)
-#         decoder_outputs, decoder_hidden = decoder(encoder_outputs, encoder_hidden, y)
-#         loss = criterion(decoder_outputs.view(-1, len(vocFra)), y.view(-1))
-#         loss.backward()
-#         optimizer.step()
-#     writer.add_scalar("Loss/train", loss, epoch)
-#     model.eval()
-#     with torch.no_grad():
-#         x, x_len, y, y_len = next(iter(test_loader))
-#         x = x.to(device)
-#         y = y.to(device)
-#         encoder_outputs, encoder_hidden = encoder(x)
-#         decoder_outputs, decoder_hidden = decoder(encoder_outputs, encoder_hidden, y)
-#         loss = criterion(decoder_outputs.view(-1, len(vocFra)), y.view(-1))
-#         writer.add_scalar("Loss/test", loss, epoch)
-#         print(f"Epoch {epoch} : {loss}")
-
-
+# %%
+x, x_len, y, y_len = next(iter(test_loader))
+x = x.to(device)
+y = y.to(device)
+print(x[:, 0].shape, y[:, 0].shape)
+# %%
+print(vocEng.getwords(x[:, 0].tolist()))
+print(vocFra.getwords(y[:, 0].tolist()))
+# %%
+encoder_outputs, encoder_hidden = encoder(x)
+decoder_outputs, decoder_hidden = decoder(encoder_outputs, encoder_hidden, y)
+# %%
+print(vocFra.getwords(decoder_outputs[:, 0].argmax(dim=1).tolist()))
 # %%

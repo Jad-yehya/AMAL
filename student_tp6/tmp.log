@@ -1,0 +1,3 @@
+23:00:19 INFO Starting training
+23:00:19 INFO Device : cuda
+23:00:19 INFO batch_size : 100, max_len : 128, lr : 0.01

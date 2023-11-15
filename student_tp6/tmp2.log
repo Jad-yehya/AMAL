@@ -1,0 +1,93 @@
+11-15 23:16 INFO     Starting training
+11-15 23:16 INFO     Learning rate : 0.01
+11-15 23:16 INFO     Batch size : 100
+11-15 23:16 INFO     Max len : 128
+11-15 23:16 INFO     Hidden size : 512
+11-15 23:16 INFO     Epochs : 15
+11-15 23:19 INFO     Starting training
+11-15 23:19 INFO     Learning rate : 0.01
+11-15 23:19 INFO     Batch size : 100
+11-15 23:19 INFO     Max len : 128
+11-15 23:19 INFO     Hidden size : 512
+11-15 23:19 INFO     Epochs : 15
+11-15 23:20 INFO     Epoch 0 : Train loss : 2.828625202178955
+11-15 23:20 INFO     Epoch 0 : Test loss : 2.086515188217163
+11-15 23:20 INFO     Epoch 0 : Test accuracy : 0.7463636363636363
+11-15 23:20 INFO     Epoch 1 : Train loss : 2.637282371520996
+11-15 23:20 INFO     Epoch 1 : Test loss : 2.2729005813598633
+11-15 23:20 INFO     Epoch 1 : Test accuracy : 0.7613043478260869
+11-15 23:21 INFO     Epoch 2 : Train loss : 2.824267864227295
+11-15 23:21 INFO     Epoch 2 : Test loss : 3.066424608230591
+11-15 23:21 INFO     Epoch 2 : Test accuracy : 0.67
+11-15 23:22 INFO     Epoch 3 : Train loss : 3.6379709243774414
+11-15 23:22 INFO     Epoch 3 : Test loss : 3.2977283000946045
+11-15 23:22 INFO     Epoch 3 : Test accuracy : 0.6466666666666666
+11-15 23:23 INFO     Epoch 4 : Train loss : 3.162740707397461
+11-15 23:23 INFO     Epoch 4 : Test loss : 2.345154285430908
+11-15 23:23 INFO     Epoch 4 : Test accuracy : 0.7459090909090909
+11-15 23:23 INFO     Epoch 5 : Train loss : 2.511594533920288
+11-15 23:23 INFO     Epoch 5 : Test loss : 3.3636670112609863
+11-15 23:23 INFO     Epoch 5 : Test accuracy : 0.6842105263157895
+11-15 23:24 INFO     Epoch 6 : Train loss : 2.579216718673706
+11-15 23:24 INFO     Epoch 6 : Test loss : 3.8625521659851074
+11-15 23:24 INFO     Epoch 6 : Test accuracy : 0.6253333333333333
+11-15 23:25 INFO     Epoch 7 : Train loss : 2.760411500930786
+11-15 23:25 INFO     Epoch 7 : Test loss : 3.51527738571167
+11-15 23:25 INFO     Epoch 7 : Test accuracy : 0.6688235294117647
+11-15 23:26 INFO     Epoch 8 : Train loss : 2.7935383319854736
+11-15 23:26 INFO     Epoch 8 : Test loss : 3.0880489349365234
+11-15 23:26 INFO     Epoch 8 : Test accuracy : 0.7075
+11-15 23:26 INFO     Epoch 9 : Train loss : 3.0834569931030273
+11-15 23:26 INFO     Epoch 9 : Test loss : 4.055445194244385
+11-15 23:26 INFO     Epoch 9 : Test accuracy : 0.675
+11-15 23:27 INFO     Starting training
+11-15 23:27 INFO     Learning rate : 0.003
+11-15 23:27 INFO     Batch size : 100
+11-15 23:27 INFO     Max len : 128
+11-15 23:27 INFO     Hidden size : 512
+11-15 23:27 INFO     Epochs : 15
+11-15 23:28 INFO     Epoch 0 : Train loss : 1.089058518409729
+11-15 23:28 INFO     Epoch 0 : Test loss : 0.9511250257492065
+11-15 23:28 INFO     Epoch 0 : Test accuracy : 0.8254545454545454
+11-15 23:28 INFO     Epoch 1 : Train loss : 0.9662712812423706
+11-15 23:28 INFO     Epoch 1 : Test loss : 0.8364028334617615
+11-15 23:28 INFO     Epoch 1 : Test accuracy : 0.8440909090909091
+11-15 23:29 INFO     Epoch 2 : Train loss : 0.4483415484428406
+11-15 23:29 INFO     Epoch 2 : Test loss : 0.9666609764099121
+11-15 23:29 INFO     Epoch 2 : Test accuracy : 0.8385714285714285
+11-15 23:30 INFO     Epoch 3 : Train loss : 0.4101739227771759
+11-15 23:30 INFO     Epoch 3 : Test loss : 0.9876167178153992
+11-15 23:30 INFO     Epoch 3 : Test accuracy : 0.8385714285714285
+11-15 23:31 INFO     Epoch 4 : Train loss : 0.4788285493850708
+11-15 23:31 INFO     Epoch 4 : Test loss : 1.1854536533355713
+11-15 23:31 INFO     Epoch 4 : Test accuracy : 0.8072222222222222
+11-15 23:31 INFO     Epoch 5 : Train loss : 0.7027798295021057
+11-15 23:31 INFO     Epoch 5 : Test loss : 0.7166815400123596
+11-15 23:31 INFO     Epoch 5 : Test accuracy : 0.8621739130434782
+11-15 23:32 INFO     Epoch 6 : Train loss : 0.6537503600120544
+11-15 23:32 INFO     Epoch 6 : Test loss : 0.9221435189247131
+11-15 23:32 INFO     Epoch 6 : Test accuracy : 0.8495454545454545
+11-15 23:33 INFO     Epoch 7 : Train loss : 0.609923243522644
+11-15 23:33 INFO     Epoch 7 : Test loss : 0.9307532906532288
+11-15 23:33 INFO     Epoch 7 : Test accuracy : 0.85
+11-15 23:34 INFO     Epoch 8 : Train loss : 0.544304609298706
+11-15 23:34 INFO     Epoch 8 : Test loss : 0.9440236687660217
+11-15 23:34 INFO     Epoch 8 : Test accuracy : 0.8405263157894737
+11-15 23:34 INFO     Epoch 9 : Train loss : 0.722098171710968
+11-15 23:34 INFO     Epoch 9 : Test loss : 0.905441164970398
+11-15 23:34 INFO     Epoch 9 : Test accuracy : 0.855
+11-15 23:35 INFO     Epoch 10 : Train loss : 0.5307079553604126
+11-15 23:35 INFO     Epoch 10 : Test loss : 1.1599632501602173
+11-15 23:35 INFO     Epoch 10 : Test accuracy : 0.8354545454545454
+11-15 23:36 INFO     Epoch 11 : Train loss : 0.39763957262039185
+11-15 23:36 INFO     Epoch 11 : Test loss : 1.1763449907302856
+11-15 23:36 INFO     Epoch 11 : Test accuracy : 0.8164705882352942
+11-15 23:37 INFO     Epoch 12 : Train loss : 0.8133501410484314
+11-15 23:37 INFO     Epoch 12 : Test loss : 1.2529246807098389
+11-15 23:37 INFO     Epoch 12 : Test accuracy : 0.7993333333333333
+11-15 23:37 INFO     Epoch 13 : Train loss : 0.47780802845954895
+11-15 23:37 INFO     Epoch 13 : Test loss : 0.922346830368042
+11-15 23:37 INFO     Epoch 13 : Test accuracy : 0.8617391304347826
+11-15 23:38 INFO     Epoch 14 : Train loss : 0.5250324010848999
+11-15 23:38 INFO     Epoch 14 : Test loss : 1.3338725566864014
+11-15 23:38 INFO     Epoch 14 : Test accuracy : 0.8141176470588235
