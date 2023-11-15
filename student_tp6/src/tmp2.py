@@ -1,4 +1,4 @@
-#%%
+# %%
 import logging
 from torch.utils.data import Dataset, DataLoader
 from torch.nn.utils.rnn import pad_sequence
@@ -14,10 +14,10 @@ from typing import List
 import random
 
 import time
-import re 
+import re
 # from torch.utils.tensorboard import SummaryWriter
 
-#%%
+# %%
 
 logging.basicConfig(level=logging.INFO)
 
@@ -25,10 +25,11 @@ FILE = "../data/en-fra.txt"
 
 writer = SummaryWriter("/tmp/runs/tag-"+time.asctime())
 
+
 def normalize(s):
-    return re.sub(' +',' ', "".join(c if c in string.ascii_letters else " "
-         for c in unicodedata.normalize('NFD', s.lower().strip())
-         if  c in string.ascii_letters+" "+string.punctuation)).strip()
+    return re.sub(' +', ' ', "".join(c if c in string.ascii_letters else " "
+                                     for c in unicodedata.normalize('NFD', s.lower().strip())
+                                     if c in string.ascii_letters+" "+string.punctuation)).strip()
 
 
 class Vocabulary:
@@ -52,7 +53,8 @@ class Vocabulary:
     def __init__(self, oov: bool):
         self.oov = oov
         self.id2word = ["PAD", "EOS", "SOS"]
-        self.word2id = {"PAD": Vocabulary.PAD, "EOS": Vocabulary.EOS, "SOS": Vocabulary.SOS}
+        self.word2id = {"PAD": Vocabulary.PAD,
+                        "EOS": Vocabulary.EOS, "SOS": Vocabulary.SOS}
         if oov:
             self.word2id["__OOV__"] = Vocabulary.OOVID
             self.id2word.append("__OOV__")
@@ -87,25 +89,29 @@ class Vocabulary:
         return [self.getword(i) for i in idx]
 
 
-
 class TradDataset():
-    def __init__(self,data,vocOrig,vocDest,adding=True,max_len=10):
-        self.sentences =[]
+    def __init__(self, data, vocOrig, vocDest, adding=True, max_len=10):
+        self.sentences = []
         for s in tqdm(data.split("\n")):
-            if len(s)<1:continue
-            orig,dest=map(normalize,s.split("\t")[:2])
-            if len(orig)>max_len: continue
-            self.sentences.append((torch.tensor([vocOrig.get(o) for o in orig.split(" ")]+[Vocabulary.EOS]),torch.tensor([vocDest.get(o) for o in dest.split(" ")]+[Vocabulary.EOS])))
-    def __len__(self):return len(self.sentences)
-    def __getitem__(self,i): return self.sentences[i]
+            if len(s) < 1:
+                continue
+            orig, dest = map(normalize, s.split("\t")[:2])
+            if len(orig) > max_len:
+                continue
+            self.sentences.append(
+                (torch.tensor([vocOrig.get(o) for o in orig.split(" ")]+[Vocabulary.EOS]),
+                 torch.tensor([vocDest.get(o) for o in dest.split(" ")]+[Vocabulary.EOS]))
+                 )
 
+    def __len__(self): return len(self.sentences)
+    def __getitem__(self, i): return self.sentences[i]
 
 
 def collate_fn(batch):
-    orig,dest = zip(*batch)
+    orig, dest = zip(*batch)
     o_len = torch.tensor([len(o) for o in orig])
     d_len = torch.tensor([len(d) for d in dest])
-    return pad_sequence(orig),o_len,pad_sequence(dest),d_len
+    return pad_sequence(orig), o_len, pad_sequence(dest), d_len
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -119,27 +125,29 @@ idxTrain = int(0.8*len(lines))
 
 vocEng = Vocabulary(True)
 vocFra = Vocabulary(True)
-MAX_LEN=128
-BATCH_SIZE=100
+MAX_LEN = 128
+BATCH_SIZE = 100
 
-datatrain = TradDataset("".join(lines[:idxTrain]),vocEng,vocFra,max_len=MAX_LEN)
-datatest = TradDataset("".join(lines[idxTrain:]),vocEng,vocFra,max_len=MAX_LEN)
+datatrain = TradDataset(
+    "".join(lines[:idxTrain]), vocEng, vocFra, max_len=MAX_LEN)
+datatest = TradDataset(
+    "".join(lines[idxTrain:]), vocEng, vocFra, max_len=MAX_LEN)
 
-train_loader = DataLoader(datatrain, collate_fn=collate_fn, batch_size=BATCH_SIZE, shuffle=True)
-test_loader = DataLoader(datatest, collate_fn=collate_fn, batch_size=BATCH_SIZE, shuffle=True)
-#%%
+train_loader = DataLoader(datatrain, collate_fn=collate_fn,
+                          batch_size=BATCH_SIZE, shuffle=True)
+test_loader = DataLoader(datatest, collate_fn=collate_fn,
+                         batch_size=BATCH_SIZE, shuffle=True)
+# %%
 #  TODO:  Implémenter l'encodeur, le décodeur et la boucle d'apprentissage
 # implémentez l'encodeur-décodeur. Utilisez dans les deux cas des GRUs et les architectures suivantes :
 # encodeur : un embedding du vocabulaire d'origine puis un GRU
-# décodeur : un embedding du vocabulaire de destination, puis un GRU suivi d'un réseau linéaire pour le décodage de l'état latent 
-# (et un softmax pour terminer) Dans le décodeur, vous aurez besoin d'une méthode generate(hidden,lenseq=None) 
-# qui à partir d'un état caché hidden (et du token SOS en entrée) produit une séquence jusqu'à ce que la longueur lenseq 
+# décodeur : un embedding du vocabulaire de destination, puis un GRU suivi d'un réseau linéaire pour le décodage de l'état latent
+# (et un softmax pour terminer) Dans le décodeur, vous aurez besoin d'une méthode generate(hidden,lenseq=None)
+# qui à partir d'un état caché hidden (et du token SOS en entrée) produit une séquence jusqu'à ce que la longueur lenseq
 # soit atteinte ou jusqu'à ce que le token EOS soit engendré.
 
+
 class Encoder(nn.Module):
-    """
-    Encoder 
-    """
     def __init__(self, input_size, hidden_size) -> None:
         super(Encoder, self).__init__()
         self.embedding = nn.Embedding(input_size, hidden_size)
@@ -148,124 +156,161 @@ class Encoder(nn.Module):
     def forward(self, x):
         x = self.embedding(x)
         x, hidden = self.gru(x)
+        return x, hidden
+    
 
-        return x, hidden   
-
-# %%
-enc = Encoder(len(vocEng), 256).to(device)
-x, x_len, y, y_len = next(iter(train_loader))
-x, y = x.to(device), y.to(device)
-print(x.shape)
-# %%
-enc_out, enc_hid = enc(x)
-print(enc_out.shape, enc_hid.shape)
-# %%
 class Decoder(nn.Module):
-    def __init__(self, output_size, hidden_size) -> None:
+    def __init__(self, hidden_size, output_size) -> None:
         super(Decoder, self).__init__()
         self.embedding = nn.Embedding(output_size, hidden_size)
         self.gru = nn.GRU(hidden_size, hidden_size)
-        self.fc = nn.Linear(hidden_size, output_size)
-        self.softmax  =nn.Softmax()
+        self.linear = nn.Linear(hidden_size, output_size)
 
-    def forward(self, x, hidden):
+    def one_step(self, x, hidden):
         x = self.embedding(x)
         x, hidden = self.gru(x, hidden)
-        x = self.fc(x)
-        x = self.softmax(x)
+        x = self.linear(x)
         return x, hidden
-    
+
+    def forward(self, encoder_outputs, encoder_hidden, target_tensor=None):
+        batch_size = encoder_outputs.size(1)
+        decoder_input = torch.empty(1, batch_size,
+                                    dtype=torch.long,
+                                    device=device).fill_(Vocabulary.SOS)
+        decoder_hidden = encoder_hidden
+        decoder_outputs = []
+
+        for i in range(MAX_LEN):
+            decoder_output, decoder_hidden = self.one_step(
+                decoder_input,
+                decoder_hidden
+            )
+            decoder_outputs.append(decoder_output)
+
+            if target_tensor is not None:
+                # Teacher forcing
+                decoder_input = target_tensor[i].view(1, -1)
+                if i == target_tensor.size(0)-1:
+                    break
+            else:
+                # Without teacher forcing
+                _, topi = decoder_output.topk(1)
+                decoder_input = topi.squeeze().detach().view(1, -1)
+
+        decoder_outputs = torch.cat(decoder_outputs, dim=0)
+        decoder_outputs = nn.functional.softmax(decoder_outputs, dim=2)
+        return decoder_outputs, decoder_hidden
+
     def generate(self, hidden, lenseq=None):
-        """
-        hidden: hidden state of the decoder
-        lenseq: length of the sequence to generate
-        """
+        decoder_input = torch.empty(1, 1, dtype=torch.long, device=device)\
+            .fill_(Vocabulary.SOS)
+        decoder_hidden = hidden
+        decoder_outputs = []
+
         if lenseq is None:
             lenseq = MAX_LEN
-        batch_size = hidden.shape[1]
-        x = torch.tensor([Vocabulary.SOS]*batch_size).to(device)
-        x = x.unsqueeze(0)
-        res = []
-        for i in range(lenseq):
-            x, hidden = self.forward(x, hidden)
-            x = torch.argmax(x, dim=2)
-            res.append(x)
-        return torch.cat(res, dim=0)
-    
-# %%
-decoder = Decoder(len(vocFra), 256).to(device)
+
+        for i in range(MAX_LEN):
+            decoder_output, decoder_hidden = self.one_step(
+                decoder_input,
+                decoder_hidden
+            )
+
+            _, topi = decoder_output.topk(1)
+            decoder_input = topi.squeeze().detach().view(1, -1)
+            decoder_outputs.append(decoder_output)
+
+            if decoder_input.item() == Vocabulary.EOS:
+                break
+
+        decoder_outputs = torch.cat(decoder_outputs, dim=0)
+        decoder_outputs = nn.functional.softmax(decoder_outputs, dim=2)
+        return decoder_outputs, decoder_hidden
+
 
 # %%
-dec_out, dec_hid = decoder(x, enc_hid)
+x, x_len, y, y_len = next(iter(train_loader))
+x = x.to(device)
+y = y.to(device)
+print(x.shape, y.shape)
 # %%
-dec_out.shape, dec_hid.shape
+encoder = Encoder(len(vocEng), 256).to(device)
+decoder = Decoder(256, len(vocFra)).to(device)
 # %%
-x.shape, y.shape
+encoder_outputs, encoder_hidden = encoder(x)
+print(encoder_outputs.shape, encoder_hidden.shape)
 # %%
-criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(list(enc.parameters()) + list(decoder.parameters()), lr=0.001)
+decoder_outputs, decoder_hidden = decoder(encoder_outputs, encoder_hidden, y)
+print(decoder_outputs.shape, decoder_hidden.shape)
 
-def train(enc, decoder, criterion, optimizer, train_loader, test_loader, epochs=10):
-    for epoch in range(epochs):
-        enc.train()
-        decoder.train()
-        for x, _, y, _ in tqdm(train_loader):
-            x, y = x.to(device), y.to(device)
-            enc_out, enc_hid = enc(x)
-            dec_hid = enc_hid
-            dec_input = torch.tensor([vocFra.SOS]*y.shape[0]).unsqueeze(0).to(device)
-            dec_output = torch.zeros(y.shape[0], y.shape[1], len(vocFra)).to(device)
-            for i in range(y.shape[1]):
-                dec_out, dec_hid = decoder(dec_input, dec_hid)
-                dec_output[:, i, :] = dec_out.squeeze(0)
-                dec_input = y[:, i].unsqueeze(0)
-            loss = criterion(dec_output.view(-1, len(vocFra)), y.view(-1))
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-            dec_hid = enc_hid
-            dec_input = torch.tensor([vocFra.SOS]*y.shape[0]).unsqueeze(0).to(device)
-            dec_output = torch.zeros(y.shape[0], y.shape[1], len(vocFra)).to(device)
-            for i in range(y.shape[1]):
-                dec_out, dec_hid = decoder(dec_input, dec_hid)
-                dec_output[:, i, :] = dec_out.squeeze(1)
-                dec_input = y[:, i].unsqueeze(0).unsqueeze(0)
-            loss = criterion(dec_output, y)
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-        print(f"Epoch {epoch+1}/{epochs} - loss: {loss}")
-        enc.eval()
-        decoder.eval()
-        with torch.no_grad():
-            for x, _, y, _ in tqdm(test_loader):
-                x, y = x.to(device), y.to(device)
-                enc_out, enc_hid = enc(x)
-                dec_hid = enc_hid
-                dec_input = torch.tensor([vocFra.SOS]*y.shape[0]).unsqueeze(0).to(device)
-                dec_output = torch.zeros(y.shape[0], y.shape[1], len(vocFra)).to(device)
-                for i in range(y.shape[1]):
-                    dec_out, dec_hid = decoder(dec_input, dec_hid)
-                    dec_output[:, i, :] = dec_out.squeeze(1)
-                    dec_input = y[:, i].unsqueeze(0).unsqueeze(0)
-                loss = criterion(dec_output, y)
-        print(f"Epoch {epoch+1}/{epochs} - test loss: {loss}")
-        writer.add_scalar("Loss/train", loss, epoch)
-        writer.add_scalar("Loss/test", loss, epoch)
+# %%
+# Training 
+model = nn.Sequential(encoder, decoder)
+optimizer = optim.Adam(model.parameters(), lr=0.001)
+criterion = nn.NLLLoss(ignore_index=Vocabulary.PAD)
+
+for epoch in range(5):
+    model.train()
+    for x, x_len, y, y_len in tqdm(train_loader):
+        x = x.to(device)
+        y = y.to(device)
+        optimizer.zero_grad()
+        encoder_outputs, encoder_hidden = encoder(x)
+        decoder_outputs, decoder_hidden = decoder(encoder_outputs, encoder_hidden, y)
+        loss = criterion(decoder_outputs.view(-1, len(vocFra)), y.view(-1))
+        loss.backward()
+        optimizer.step()
+        writer.add_scalar("Loss/train", loss.item(), epoch)
+    print(loss.item())
+    # Calculating accuracy
+    model.eval()
+    with torch.no_grad():
+        x, x_len, y, y_len = next(iter(test_loader))
+        x = x.to(device)
+        y = y.to(device)
+        encoder_outputs, encoder_hidden = encoder(x)
+        decoder_outputs, decoder_hidden = decoder(encoder_outputs, encoder_hidden, y)
+        loss = criterion(decoder_outputs.view(-1, len(vocFra)), y.view(-1))
+        writer.add_scalar("Loss/test", loss.item(), epoch)
+        print(f"Epoch {epoch} : {loss.item()}")
+        # Calculating accuracy
+        _, topi = decoder_outputs.topk(1)
+        topi = topi.squeeze().detach().view(-1, y.shape[1])
+        print(topi.shape)
+        print(y.shape)
+        print("x : ", vocEng.getwords(x[:, 0]))
+        print("y :", vocFra.getwords(y[:, 0]))
+        print("y hat : ", vocFra.getwords(topi[:, 0]))
+        accuracy = (topi == y).sum().item() / (y.shape[0] * y.shape[1])
+        print(f"Accuracy : {accuracy}")
+        writer.add_scalar("Accuracy/test", accuracy, epoch)
+
 
 #%%
-train(enc, decoder, criterion, optimizer, train_loader, test_loader, epochs=10)
-# %%
-def translate(enc, decoder, sentence):
-    enc.eval()
-    decoder.eval()
-    with torch.no_grad():
-        sentence = torch.tensor([vocEng.get(w) for w in sentence.split(" ")]).to(device)
-        enc_out, enc_hid = enc(sentence.unsqueeze(0))
-        res = decoder.generate(enc_hid)
-        res = vocFra.getwords(res.squeeze(1).cpu().numpy())
-        res = " ".join(res)
-        return res
-# %%
-translate(enc, decoder, "I am a student")
+
+
+# for epoch in range(10):
+#     model.train()
+#     for x, x_len, y, y_len in tqdm(train_loader):
+#         x = x.to(device)
+#         y = y.to(device)
+#         optimizer.zero_grad()
+#         encoder_outputs, encoder_hidden = encoder(x)
+#         decoder_outputs, decoder_hidden = decoder(encoder_outputs, encoder_hidden, y)
+#         loss = criterion(decoder_outputs.view(-1, len(vocFra)), y.view(-1))
+#         loss.backward()
+#         optimizer.step()
+#     writer.add_scalar("Loss/train", loss, epoch)
+#     model.eval()
+#     with torch.no_grad():
+#         x, x_len, y, y_len = next(iter(test_loader))
+#         x = x.to(device)
+#         y = y.to(device)
+#         encoder_outputs, encoder_hidden = encoder(x)
+#         decoder_outputs, decoder_hidden = decoder(encoder_outputs, encoder_hidden, y)
+#         loss = criterion(decoder_outputs.view(-1, len(vocFra)), y.view(-1))
+#         writer.add_scalar("Loss/test", loss, epoch)
+#         print(f"Epoch {epoch} : {loss}")
+
+
 # %%
