@@ -127,12 +127,6 @@ train_loader = DataLoader(datatrain, collate_fn=collate_fn, batch_size=BATCH_SIZ
 test_loader = DataLoader(datatest, collate_fn=collate_fn, batch_size=BATCH_SIZE, shuffle=True)
 
 #  TODO:  Implémenter l'encodeur, le décodeur et la boucle d'apprentissage
-# implémentez l'encodeur-décodeur. Utilisez dans les deux cas des GRUs et les architectures suivantes :
-# encodeur : un embedding du vocabulaire d'origine puis un GRU
-# décodeur : un embedding du vocabulaire de destination, puis un GRU suivi d'un réseau linéaire pour le 
-# décodage de l'état latent (et un softmax pour terminer) Dans le décodeur, vous aurez besoin d'une 
-# méthode generate(hidden,lenseq=None) qui à partir d'un état caché hidden (et du token SOS en entrée) 
-# produit une séquence jusqu'à ce que la longueur lenseq soit atteinte ou jusqu'à ce que le token EOS soit engendré.
 
 class Encoder(nn.Module):
     def __init__(self, input_size, hidden_size, embedding_size=256):
@@ -341,33 +335,7 @@ if __name__ == "__main__":
     train(model, train_loader, test_loader, loss_function, optimizer, writer, epochs=10)
     test(model, test_loader)
     generate(model, test_loader)
-
-    # encoder = Encoder(input_size, hidden_size, embedding_size).to(device)
-    # decoder = Decoder(output_size, hidden_size, embedding_size).to(device)
-
-    # batch = next(iter(train_loader))
-    # x, x_len, y, y_len = batch
-
-    # x = x.permute(1, 0).to(device)
-    # y = y.permute(1, 0).to(device)
-
-    # hidden = encoder.initHidden()
-    # for i in range(x.shape[0]):
-    #     _, hidden = encoder(x[i], hidden)
-
-    # decoder_input = torch.tensor([[Vocabulary.SOS]], device=device)
-
-    # outs = []
-    # for i in range(y.shape[0]):
-    #     output, hidden = decoder(decoder_input, hidden)
-    #     topv, topi = output.topk(1)
-    #     outs.append(topi.item())
-    #     decoder_input = topi.squeeze().detach()
-    #     if topi.item() == Vocabulary.EOS:
-    #         break
-
-    # translation = [vocFra.getword(i) for i in outs]
-    # print(translation)
+    
 writer.close()
 
 
