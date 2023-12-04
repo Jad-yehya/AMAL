@@ -116,9 +116,6 @@ test_loader = DataLoader(test_data, collate_fn=collate_fn, batch_size=BATCH_SIZE
 
 
 #  TODO:  Implémenter le modèle et la boucle d'apprentissage (en utilisant les LSTMs de pytorch)
-# Implémentez un modèle seq2seq pour le tagging et la boucle d'apprentissage en utilisant le module LSTM de Pytorch
-# et le padding de séquences. Pour tenir compte des mots OOV, vous pouvez utiliser le token "OOVID" (déjà défini
-# dans la classe Vocabulary).
 class Tagger(nn.Module):
     def __init__(self, vocab_size, tagset_size, embedding_dim, hidden_dim):
         super(Tagger, self).__init__()

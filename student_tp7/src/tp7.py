@@ -1,14 +1,11 @@
 # %%
 from datamaestro import prepare_dataset
-import click
 from tqdm import tqdm
 from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import DataLoader, Dataset, random_split
 import torch.nn.functional as F
 import torch.nn as nn
 import torch
-from pathlib import Path
-import os
 import logging
 logging.basicConfig(level=logging.INFO)
 
@@ -53,7 +50,8 @@ class MnistDataset(Dataset):
             # 5% des données d’entraînement
             len5 = int(len(images) * TRAIN_RATIO)
 
-            # On veut des données stratifiées, avec le même nombre d’images par classe
+            # On veut des données stratifiées,
+            # avec le même nombre d’images par classe
             # On récupère les indices des images de chaque classe
             indices = []
             for i in range(10):
