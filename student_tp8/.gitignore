@@ -1,0 +1,4 @@
+*.pth
+*.model
+*.vocab
+*/__pycache__

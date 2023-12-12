@@ -1,6 +1,5 @@
 /runs
 /src/runs
-/src/tmp.py
 */runs
 *.log
 *.pt
