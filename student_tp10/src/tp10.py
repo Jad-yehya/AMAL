@@ -1,4 +1,3 @@
-# %%
 import logging
 import math
 import re
@@ -87,9 +86,6 @@ def get_imdb_data(embedding_size=50):
     )
 
 
-# %%
-
-
 #  TODO:
 class SelfAttentionModel(nn.Module):
     def __init__(self, input_size, hidd_size, output_size, num_layers=3):
@@ -99,16 +95,87 @@ class SelfAttentionModel(nn.Module):
         self.output_size = output_size
         self.num_layers = num_layers
 
-        # Couches Q, K, V
         self.linear_q = nn.Linear(self.input_size, self.hidd_size)
         self.linear_k = nn.Linear(self.input_size, self.hidd_size)
         self.linear_v = nn.Linear(self.input_size, self.hidd_size)
 
-        # Couche de sortie
         self.linear_out = nn.Linear(self.hidd_size, self.output_size)
 
+    def forward(self, x, lens):
+        # x.shape = [batch_size, seq_len, input_size]
+        # lens.shape = [batch_size]
+        batch_size = x.shape[0]
+        seq_len = x.shape[1]
 
-# %%
+        q = self.linear_q(x)
+        k = self.linear_k(x)
+        v = self.linear_v(x)
+
+        scores = torch.bmm(q, k.transpose(1, 2)) / math.sqrt(self.hidd_size)
+
+        mask = torch.arange(seq_len).expand(batch_size, seq_len).to(x.device)
+        mask = mask >= lens.unsqueeze(1)
+
+        scores.masked_fill_(mask.unsqueeze(1), -1e9)
+
+        weights = F.softmax(scores, dim=-1)
+
+        output = torch.bmm(weights, v)
+        output = self.linear_out(output)
+
+        # On veut [batch_size, output_size]
+        output = torch.mean(output, dim=1)
+
+        return output
+
+
+class ResSelfAttentionModel(nn.Module):
+    def __init__(self, input_size, hidd_size, output_size, num_layers=3):
+        super().__init__()
+        self.input_size = input_size
+        self.hidd_size = hidd_size
+        self.output_size = output_size
+        self.num_layers = num_layers
+
+        self.linear_q = nn.Linear(self.input_size, self.hidd_size)
+        self.linear_k = nn.Linear(self.input_size, self.hidd_size)
+        self.linear_v = nn.Linear(self.input_size, self.hidd_size)
+
+        self.linear_out = nn.Linear(self.hidd_size, self.output_size)
+
+        self.norm = nn.LayerNorm(self.input_size)
+
+    def forward(self, x, lens):
+        # Normalisation de l'entrée
+        x_norm = self.norm(x)
+
+        # x.shape = [batch_size, seq_len, input_size]
+        batch_size = x.shape[0]
+        seq_len = x.shape[1]
+
+        q = self.linear_q(x_norm)
+        k = self.linear_k(x_norm)
+        v = self.linear_v(x_norm)
+
+        scores = torch.bmm(q, k.transpose(1, 2)) / math.sqrt(self.hidd_size)
+
+        mask = torch.arange(seq_len).expand(batch_size, seq_len).to(x.device)
+        mask = mask >= lens.unsqueeze(1)
+
+        scores.masked_fill_(mask.unsqueeze(1), -1e9)
+
+        weights = F.softmax(scores, dim=-1)
+
+        output = torch.bmm(weights, v)
+        output += x_norm
+        output = self.linear_out(output)
+
+        # On veut [batch_size, output_size]
+        output = torch.mean(output, dim=1)
+
+        return output
+
+
 @click.command()
 @click.option(
     "--test-iterations",
@@ -155,11 +222,15 @@ def main(epochs, test_iterations, modeltype, emb_size, batch_size):
         test_data, batch_size=batch_size, collate_fn=collate, shuffle=False
     )
     ##  TODO:
-    model = SelfAttentionModel(emb_size, 100, 2).to(device)
+    if modeltype == 1:
+        model = SelfAttentionModel(emb_size, 100, 2).to(device)
+    elif modeltype == 2:
+        model = ResSelfAttentionModel(emb_size, 100, 2).to(device)
+
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     writer = SummaryWriter("runs/tp10")
-    for epoch in range(epochs):
+    for epoch in tqdm(range(epochs)):
         model.train()
         for i, (inputs, labels, lens) in enumerate(train_loader):
             optimizer.zero_grad()
@@ -183,9 +254,5 @@ def main(epochs, test_iterations, modeltype, emb_size, batch_size):
     writer.close()
 
 
-# %%
-
 if __name__ == "__main__":
     main()
-
-# %%
